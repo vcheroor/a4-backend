@@ -5,6 +5,8 @@ namespace Database\Seeders;
 use App\Models\User;
 // use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use App\Models\Category;
+use App\Models\Post;
 
 class DatabaseSeeder extends Seeder
 {
@@ -25,5 +27,8 @@ class DatabaseSeeder extends Seeder
             'email' => 'user@example.com',
             'type' => 'user',
         ]);
+
+        Category::factory(5)->create();
+        Post::factory(10)->create();
     }
 }
