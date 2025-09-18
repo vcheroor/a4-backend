@@ -1,14 +1,14 @@
-# Laravel Blog Admin Panel
+# Laravel Blog API (Sanctum)
 
 **GitHub URL**: https://github.com/vcheroor/blog_new_assignment2
 
 ## Summary
-A Laravel 12 CRUD blog system with admin-only access, posts and categories, database seeding, route model binding, and a custom 404 fallback route.
+Laravel 11 JSON API for a simple blog. Provides public list/view endpoints and authenticated create/update/delete using Laravel Sanctum tokens. Uses MySQL and includes a seeded admin user.
 
 ## What I Did
-- Installed Laravel UI for auth
-- Created Post and Category models with Eloquent relationships
-- Created middleware-protected routes
-- Implemented route model binding
-- Created blade views for each CRUD action
-- Added seeding and factory data
+- Set up Sanctum token auth and added middleware in `bootstrap/app.php` (stateful + bindings)
+- Built `AuthController` (login, me, logout) and `PostController` (CRUD with validation)
+- Defined API routes (`routes/api.php`) with public + `auth:sanctum` protected groups
+- Created `posts` migration/model (`title`, `content`) with `$fillable` and relationships
+- Wrote database seeder for admin user (`admin@example.com` / `password`)
+- Added Postman collection for login + CRUD and verified endpoints
