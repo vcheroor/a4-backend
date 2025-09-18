@@ -2,50 +2,91 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use App\Models\Post;
-use App\Models\Category;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Http\Request;
 
 class PostController extends Controller
 {
-    public function index() {
-        $posts = Post::with('category')->get(); 
-        return view('posts.index', compact('posts'));
+    public function index()
+    {
+        return Post::with(['category', 'user'])
+            ->orderByDesc('id')
+            ->get();
     }
 
-    public function create() {
-        $categories = Category::all();
-        return view('posts.create', compact('categories'));
+   
+    public function show(Post $post)
+    {
+        $post->load(['category', 'user']);
+        return $post;
     }
 
-    public function save(Request $request) {
-        $validated = $request->validate([
-            'title' => 'required|max:50',
-            'content' => 'required',
-            'category_id' => 'required|exists:categories,id',
+   
+    protected function normalizeIsActive($value): string
+    {
+        if (is_bool($value)) {
+            return $value ? 'Yes' : 'No';
+        }
+        $v = strtolower((string) $value);
+        if (in_array($v, ['1', 'true', 'yes'], true)) {
+            return 'Yes';
+        }
+        if (in_array($v, ['0', 'false', 'no'], true)) {
+            return 'No';
+        }
+        return 'Yes';
+    }
+
+    public function store(Request $request)
+    {
+        $data = $request->validate([
+            'title'       => 'required|string|max:255',
+            'content'     => 'required|string',
+            'category_id' => 'nullable|integer|exists:categories,id',
+            'is_active'   => 'sometimes', 
         ]);
 
-        Post::create([
-            'title' => $validated['title'],
-            'content' => $validated['content'],
-            'category_id' => $validated['category_id'],
-            'user_id' => Auth::id(), 
-            'is_active' => 'Yes'
+        $data['is_active'] = array_key_exists('is_active', $data)
+            ? $this->normalizeIsActive($data['is_active'])
+            : 'Yes';
+
+       
+        $post = $request->user()->posts()->create($data);
+
+        return response()->json($post->load(['category', 'user']), 201);
+    }
+
+
+    public function update(Request $request, Post $post)
+    {
+        if ($post->user_id !== $request->user()->id) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        $data = $request->validate([
+            'title'       => 'required|string|max:255',
+            'content'     => 'required|string',
+            'category_id' => 'nullable|integer|exists:categories,id',
+            'is_active'   => 'sometimes',
         ]);
 
-        return redirect('/admin/posts');
+        if (array_key_exists('is_active', $data)) {
+            $data['is_active'] = $this->normalizeIsActive($data['is_active']);
+        }
+
+        $post->update($data);
+
+        return response()->json($post->fresh()->load(['category', 'user']));
     }
 
-    
-    public function edit(Post $post) {
-        $categories = Category::all();
-        return view('posts.edit', compact('post', 'categories'));
-    }
+    public function destroy(Request $request, Post $post)
+    {
+        if ($post->user_id !== $request->user()->id) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
 
-
-    public function delete(Post $post) {
         $post->delete();
-        return redirect('/admin/posts');
+
+        return response()->noContent(); 
     }
 }
