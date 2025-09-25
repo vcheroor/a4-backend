@@ -3,39 +3,45 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
-use App\Models\User;
+use Illuminate\Support\Facades\Auth;
 
 class AuthController extends Controller
 {
     public function login(Request $request)
     {
-        $credentials = $request->validate([
-            'email'    => ['required', 'email'],
-            'password' => ['required', 'string'],
+        $data = $request->validate([
+            'email'    => ['required','email'],
+            'password' => ['required'],
         ]);
 
-        $user = User::where('email', $credentials['email'])->first();
-
-        if (! $user || ! Hash::check($credentials['password'], $user->password)) {
-            return response()->json(['message' => 'Invalid credentials'], 422);
+        if (!Auth::attempt($data)) {
+            return response()->json(['message' => 'Invalid credentials'], 401);
         }
 
+        $user  = $request->user(); // comes from Sanctum guard when route is protected
         $token = $user->createToken('api')->plainTextToken;
 
         return response()->json([
             'token' => $token,
-            'user'  => [
-                'id'    => $user->id,
-                'name'  => $user->name,
-                'email' => $user->email,
-            ],
-        ]);
+            'user'  => $user->only(['id','name','email']),
+        ], 200);
+    }
+
+    public function me(Request $request)
+    {
+        $user = $request->user();           // <-- works only if route has auth:sanctum
+        if (!$user) {
+            return response()->json(['message' => 'Unauthenticated'], 401);
+        }
+        return response()->json($user->only(['id','name','email']));
     }
 
     public function logout(Request $request)
     {
-        $request->user()->currentAccessToken()->delete();
-        return response()->noContent(); 
+        $user = $request->user();
+        if ($user) {
+            $user->currentAccessToken()?->delete();
+        }
+        return response()->json(['message' => 'Logged out']);
     }
 }
